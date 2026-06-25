@@ -350,3 +350,124 @@
   background: #1e1e38;
   color: #9090b0;
 }
+
+/* ── Mobile ── */
+@media (max-width: 768px) {
+  .app-header {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 16px 16px 12px;
+    gap: 10px;
+  }
+
+  .app-header h1 {
+    font-size: 1.15rem;
+  }
+
+  .trophy { font-size: 1.5rem; }
+
+  .subtitle { display: none; }
+
+  .standings-row {
+    width: 100%;
+    margin-left: 0;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .standings-row::-webkit-scrollbar { display: none; }
+
+  .standing-chip {
+    font-size: 0.72rem;
+    padding: 3px 8px 3px 5px;
+  }
+
+  /* Stack legend above chart */
+  .main-content {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 12px 12px 0;
+    gap: 12px;
+  }
+
+  .legend-panel {
+    width: 100%;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 6px;
+    padding: 0 0 6px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .legend-panel::-webkit-scrollbar { display: none; }
+
+  .legend-title { display: none; }
+
+  .legend-btn {
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 10px;
+    border-radius: 10px;
+    flex-shrink: 0;
+    min-width: 60px;
+    border-color: transparent;
+    background: #14142a;
+  }
+
+  .legend-btn:not(.leg-hidden) {
+    border-color: var(--col);
+  }
+
+  .leg-info {
+    align-items: center;
+  }
+
+  .leg-name {
+    font-size: 0.7rem;
+  }
+
+  .leg-sub {
+    font-size: 0.62rem;
+  }
+
+  .leg-x {
+    position: static;
+    font-size: 0.65rem;
+  }
+
+  /* Taller chart on mobile so lines aren't cramped */
+  .chart-area .recharts-responsive-container {
+    height: 380px !important;
+  }
+
+  /* Tooltip full-width at bottom (handled via JS too) */
+  .floating-tooltip {
+    position: fixed !important;
+    left: 12px !important;
+    right: 12px !important;
+    bottom: 80px !important;
+    top: auto !important;
+  }
+
+  .tooltip-card {
+    width: 100%;
+  }
+
+  .scroll-hint {
+    bottom: 12px;
+    right: 12px;
+    padding: 7px 10px;
+  }
+
+  .teams-section {
+    padding: 16px 12px 0;
+  }
+
+  .teams-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}

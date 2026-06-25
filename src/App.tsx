@@ -212,9 +212,15 @@ export default function App() {
   const handleEnter = useCallback((tt: TooltipState) => setTooltip(tt), [])
   const handleLeave = useCallback(() => setTooltip(null), [])
 
-  // Position tooltip relative to chart wrapper
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
+
+  // Position tooltip relative to chart wrapper (fixed on mobile to avoid overflow)
   const getTooltipStyle = () => {
-    if (!tooltip || !chartRef.current) return {}
+    if (!tooltip) return {}
+    if (isMobile) {
+      return { position: 'fixed' as const, left: 12, right: 12, bottom: 80, top: 'auto' }
+    }
+    if (!chartRef.current) return {}
     const rect = chartRef.current.getBoundingClientRect()
     let left = tooltip.screenX - rect.left + 12
     let top = tooltip.screenY - rect.top - 80
@@ -334,7 +340,7 @@ export default function App() {
           </ResponsiveContainer>
 
           {tooltip && (
-            <div className="floating-tooltip" style={getTooltipStyle()}>
+            <div className="floating-tooltip" style={{ ...getTooltipStyle(), width: isMobile ? 'auto' : undefined }}>
               <TooltipCard tooltip={tooltip} />
             </div>
           )}
