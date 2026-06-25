@@ -463,8 +463,12 @@
     padding: 7px 10px;
   }
 
+  .chart-area {
+    padding-bottom: 16px;
+  }
+
   .teams-section {
-    padding: 16px 12px 0;
+    padding: 24px 12px 0;
   }
 
   .teams-grid {

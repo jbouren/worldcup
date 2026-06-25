@@ -212,7 +212,13 @@ export default function App() {
   const handleEnter = useCallback((tt: TooltipState) => setTooltip(tt), [])
   const handleLeave = useCallback(() => setTooltip(null), [])
 
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
+  const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' && window.innerWidth < 768)
+
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 768)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
 
   // Position tooltip relative to chart wrapper (fixed on mobile to avoid overflow)
   const getTooltipStyle = () => {
@@ -279,7 +285,7 @@ export default function App() {
 
         <div className="chart-area" ref={chartRef}>
           <ResponsiveContainer width="100%" height={520}>
-            <LineChart data={chartData} margin={{ top: 16, right: 32, left: 8, bottom: 32 }}>
+            <LineChart data={chartData} margin={{ top: 16, right: 32, left: 8, bottom: isMobile ? 48 : 32 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
               <XAxis
                 dataKey="x"
