@@ -29,6 +29,7 @@ interface MatchDetail {
 interface DataPoint {
   x: number
   y: number
+  matchNum: number
   details: MatchDetail[]
 }
 
@@ -43,20 +44,23 @@ interface Player {
   avatarRow: number
 }
 
+interface Match {
+  num: number
+  date: string
+  stage: string
+  team1: string
+  g1: number
+  g2: number
+  team2: string
+}
+
 const players = data.players as Player[]
+const allMatches = data.matches as Match[]
+const MAX_MATCH = allMatches[allMatches.length - 1]?.num ?? 1
 
 function Avatar({ player, size = 48 }: { player: Player; size?: number }) {
   return (
-    <div
-      style={{
-        width: size,
-        height: size,
-        borderRadius: 6,
-        overflow: 'hidden',
-        border: `2px solid ${player.color}`,
-        flexShrink: 0,
-      }}
-    >
+    <div style={{ width: size, height: size, borderRadius: 6, overflow: 'hidden', border: `2px solid ${player.color}`, flexShrink: 0 }}>
       <img
         src={`/avatars/${player.name.toLowerCase()}.png`}
         alt={player.name}
@@ -79,9 +83,7 @@ function TooltipCard({ tooltip }: { tooltip: TooltipState | null }) {
   if (!tooltip) return null
   const { player, point } = tooltip
   if (point.details.length === 0) return null
-
   const totalGained = point.details.reduce((s, d) => s + d.pts, 0)
-
   return (
     <div className="tooltip-card">
       <div className="tooltip-header">
@@ -90,9 +92,7 @@ function TooltipCard({ tooltip }: { tooltip: TooltipState | null }) {
           <div className="tooltip-player">{player.name}</div>
           <div className="tooltip-total">{point.y} pts total</div>
         </div>
-        <div className="tooltip-gained" style={{ color: player.color }}>
-          +{totalGained}
-        </div>
+        <div className="tooltip-gained" style={{ color: player.color }}>+{totalGained}</div>
       </div>
       {point.details.map((d, i) => (
         <div key={i} className="tooltip-match">
@@ -107,8 +107,7 @@ function TooltipCard({ tooltip }: { tooltip: TooltipState | null }) {
             <span className="tooltip-score-text">
               {d.stage === 'Group Finish'
                 ? <strong>{d.team}</strong>
-                : <><strong>{d.team}</strong> {d.score} {d.opp}</>
-              }
+                : <><strong>{d.team}</strong> {d.score} {d.opp}</>}
             </span>
           </div>
           <div className="tooltip-breakdown">
@@ -119,24 +118,26 @@ function TooltipCard({ tooltip }: { tooltip: TooltipState | null }) {
           </div>
         </div>
       ))}
-      <div className="tooltip-game-label">
-        Game {point.x} of {player.gamesPlayed}
-      </div>
+      <div className="tooltip-game-label">Game {point.x} of {player.gamesPlayed}</div>
     </div>
   )
 }
 
-// Build unified recharts data array with each player's step-interpolated y value
-function buildChartData(visiblePlayers: Player[]) {
-  const maxX = Math.max(...players.map(p => p.gamesPlayed), 1)
+function buildChartData(visiblePlayers: Player[], cutoff: number) {
+  let maxX = 0
+  for (const p of visiblePlayers) {
+    for (const pt of p.data) {
+      if (pt.matchNum <= cutoff) maxX = Math.max(maxX, pt.x)
+    }
+  }
+  maxX = Math.max(maxX, 1)
   const rows: Record<string, number>[] = []
   for (let x = 0; x <= maxX; x++) {
     const row: Record<string, number> = { x }
     for (const p of visiblePlayers) {
       let val = 0
       for (const pt of p.data) {
-        if (pt.x <= x) val = pt.y
-        else break
+        if (pt.matchNum <= cutoff && pt.x <= x) val = pt.y
       }
       row[p.name] = val
     }
@@ -145,15 +146,11 @@ function buildChartData(visiblePlayers: Player[]) {
   return rows
 }
 
-// Custom dot renderer: only shows on actual data events
 function renderDot(
-  props: {
-    cx?: number
-    cy?: number
-    payload?: Record<string, number>
-  },
+  props: { cx?: number; cy?: number; payload?: Record<string, number> },
   player: Player,
   hoveredPlayer: string | null,
+  cutoff: number,
   onEnter: (tt: TooltipState) => void,
   onLeave: () => void
 ) {
@@ -161,34 +158,27 @@ function renderDot(
   if (!cx || !cy || !payload) return <g key="empty" />
   const x = payload['x']
   const pt = player.data.find(d => d.x === x)
-  if (!pt || pt.details.length === 0) return <g key={`${player.name}-${x}-empty`} />
-
+  if (!pt || pt.details.length === 0 || pt.matchNum > cutoff) return <g key={`${player.name}-${x}-empty`} />
   const opacity = hoveredPlayer && hoveredPlayer !== player.name ? 0.2 : 1
-
   return (
     <circle
       key={`${player.name}-${x}`}
-      cx={cx}
-      cy={cy}
-      r={5}
+      cx={cx} cy={cy} r={5}
       fill={player.color}
       stroke="#0f0f1a"
       strokeWidth={2}
       style={{ cursor: 'pointer', opacity }}
       onMouseEnter={(e) => {
-        const rect = (e.target as SVGElement)
-          .closest('svg')!
-          .getBoundingClientRect()
-        onEnter({
-          player,
-          point: pt,
-          screenX: rect.left + cx,
-          screenY: rect.top + cy,
-        })
+        const rect = (e.target as SVGElement).closest('svg')!.getBoundingClientRect()
+        onEnter({ player, point: pt, screenX: rect.left + cx, screenY: rect.top + cy })
       }}
       onMouseLeave={onLeave}
     />
   )
+}
+
+function DateFlip({ date }: { date: string }) {
+  return <span key={date} className="date-flip">{date}</span>
 }
 
 export default function App() {
@@ -196,6 +186,8 @@ export default function App() {
   const [tooltip, setTooltip] = useState<TooltipState | null>(null)
   const [hoveredPlayer, setHoveredPlayer] = useState<string | null>(null)
   const [scrolled, setScrolled] = useState(false)
+  const [cutoff, setCutoff] = useState(MAX_MATCH)
+  const [playing, setPlaying] = useState(false)
   const chartRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -204,37 +196,56 @@ export default function App() {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  const visible = players.filter(p => !hidden.has(p.name))
-  const chartData = buildChartData(visible)
-  const sorted = [...players].sort((a, b) => b.totalPoints - a.totalPoints)
+  // Playback animation
+  useEffect(() => {
+    if (!playing) return
+    const id = setInterval(() => {
+      setCutoff(prev => {
+        if (prev >= MAX_MATCH) { setPlaying(false); return prev }
+        return prev + 1
+      })
+    }, 220)
+    return () => clearInterval(id)
+  }, [playing])
 
-  const togglePlayer = (name: string) => {
-    setHidden(prev => {
-      const next = new Set(prev)
-      if (next.has(name)) next.delete(name)
-      else next.add(name)
-      return next
-    })
-    setTooltip(null)
+  const handlePlay = () => {
+    if (cutoff >= MAX_MATCH) { setCutoff(0); setPlaying(true) }
+    else setPlaying(p => !p)
   }
 
-  const handleEnter = useCallback((tt: TooltipState) => setTooltip(tt), [])
-  const handleLeave = useCallback(() => setTooltip(null), [])
-
   const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' && window.innerWidth < 768)
-
   useEffect(() => {
     const onResize = () => setIsMobile(window.innerWidth < 768)
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
   }, [])
 
-  // Position tooltip relative to chart wrapper (fixed on mobile to avoid overflow)
+  const visible = players.filter(p => !hidden.has(p.name))
+  const chartData = buildChartData(visible, cutoff)
+
+  // Current standings at the cutoff
+  const currentTotals: Record<string, number> = {}
+  for (const p of players) {
+    let y = 0
+    for (const pt of p.data) { if (pt.matchNum <= cutoff) y = pt.y }
+    currentTotals[p.name] = y
+  }
+  const sorted = [...players].sort((a, b) => (currentTotals[b.name] ?? 0) - (currentTotals[a.name] ?? 0))
+
+  const currentMatch = allMatches.filter(m => m.num <= cutoff).slice(-1)[0]
+  const currentDate = currentMatch?.date ?? ''
+
+  const togglePlayer = (name: string) => {
+    setHidden(prev => { const n = new Set(prev); n.has(name) ? n.delete(name) : n.add(name); return n })
+    setTooltip(null)
+  }
+
+  const handleEnter = useCallback((tt: TooltipState) => setTooltip(tt), [])
+  const handleLeave = useCallback(() => setTooltip(null), [])
+
   const getTooltipStyle = () => {
     if (!tooltip) return {}
-    if (isMobile) {
-      return { position: 'fixed' as const, left: 12, right: 12, bottom: 80, top: 'auto' }
-    }
+    if (isMobile) return { position: 'fixed' as const, left: 12, right: 12, bottom: 80, top: 'auto' }
     if (!chartRef.current) return {}
     const rect = chartRef.current.getBoundingClientRect()
     let left = tooltip.screenX - rect.left + 12
@@ -260,7 +271,7 @@ export default function App() {
               <span className="chip-rank" style={{ color: p.color }}>#{i + 1}</span>
               <Avatar player={p} size={22} />
               <span className="chip-name">{p.name}</span>
-              <span className="chip-pts" style={{ color: p.color }}>{p.totalPoints}</span>
+              <span className="chip-pts" style={{ color: p.color }}>{currentTotals[p.name]}</span>
             </div>
           ))}
         </div>
@@ -284,7 +295,7 @@ export default function App() {
                 <Avatar player={p} size={36} />
                 <div className="leg-info">
                   <span className="leg-name">{p.name}</span>
-                  <span className="leg-sub">{p.totalPoints} pts · {p.gamesPlayed}g</span>
+                  <span className="leg-sub">{currentTotals[p.name]} pts · {p.gamesPlayed}g</span>
                 </div>
                 {isHidden && <span className="leg-x">✕</span>}
               </button>
@@ -293,7 +304,35 @@ export default function App() {
         </div>
 
         <div className="chart-area" ref={chartRef}>
-          <ResponsiveContainer width="100%" height={520}>
+          {/* Playback bar */}
+          <div className="playback-bar">
+            <button
+              className={`play-btn ${playing ? 'is-playing' : ''}`}
+              onClick={handlePlay}
+              aria-label={playing ? 'Pause' : 'Play'}
+            >
+              {playing ? '⏸' : '▶'}
+            </button>
+            <input
+              type="range"
+              className="playback-scrubber"
+              min={0}
+              max={MAX_MATCH}
+              value={cutoff}
+              onChange={e => { setPlaying(false); setCutoff(+e.target.value) }}
+            />
+            <div className="playback-info">
+              {cutoff === 0
+                ? <span className="playback-date">Start</span>
+                : cutoff >= MAX_MATCH
+                ? <span className="playback-date">Live</span>
+                : <DateFlip date={currentDate} />
+              }
+              <span className="playback-count">{Math.min(cutoff, MAX_MATCH)}/{MAX_MATCH}</span>
+            </div>
+          </div>
+
+          <ResponsiveContainer width="100%" height={isMobile ? 380 : 480}>
             <LineChart data={chartData} margin={{ top: 16, right: 32, left: 8, bottom: isMobile ? 48 : 32 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
               <XAxis
@@ -301,26 +340,13 @@ export default function App() {
                 type="number"
                 domain={[0, 'dataMax']}
                 tickCount={14}
-                label={{
-                  value: 'Games Played',
-                  position: 'insideBottom',
-                  offset: -16,
-                  fill: '#666',
-                  fontSize: 13,
-                }}
+                label={{ value: 'Games Played', position: 'insideBottom', offset: -16, fill: '#666', fontSize: 13 }}
                 tick={{ fill: '#666', fontSize: 12 }}
                 tickLine={false}
                 axisLine={{ stroke: '#333' }}
               />
               <YAxis
-                label={{
-                  value: 'Points',
-                  angle: -90,
-                  position: 'insideLeft',
-                  offset: 20,
-                  fill: '#666',
-                  fontSize: 13,
-                }}
+                label={{ value: 'Points', angle: -90, position: 'insideLeft', offset: 20, fill: '#666', fontSize: 13 }}
                 tick={{ fill: '#666', fontSize: 12 }}
                 tickLine={false}
                 axisLine={false}
@@ -336,18 +362,14 @@ export default function App() {
                     stroke={p.color}
                     strokeWidth={isHovered ? 3.5 : 2}
                     strokeOpacity={opacity}
-                    dot={(dotProps) =>
-                      renderDot(
-                        dotProps as { cx?: number; cy?: number; payload?: Record<string, number> },
-                        p,
-                        hoveredPlayer,
-                        handleEnter,
-                        handleLeave
-                      )
-                    }
+                    dot={(dotProps) => renderDot(
+                      dotProps as { cx?: number; cy?: number; payload?: Record<string, number> },
+                      p, hoveredPlayer, cutoff, handleEnter, handleLeave
+                    )}
                     activeDot={false}
-                    isAnimationActive={true}
-                    animationDuration={500}
+                    isAnimationActive={false}
+                    onMouseEnter={() => setHoveredPlayer(p.name)}
+                    onMouseLeave={() => setHoveredPlayer(null)}
                   />
                 )
               })}
@@ -377,24 +399,16 @@ export default function App() {
         <h2 className="teams-title">Rosters</h2>
         <div className="teams-grid">
           {sorted.map(p => (
-            <div
-              key={p.name}
-              className="team-card"
-              style={{ borderColor: hidden.has(p.name) ? '#222' : p.color + '44' }}
-            >
+            <div key={p.name} className="team-card" style={{ borderColor: hidden.has(p.name) ? '#222' : p.color + '44' }}>
               <div className="team-card-head">
                 <Avatar player={p} size={44} />
                 <div>
                   <div className="tc-name">{p.name}</div>
-                  <div className="tc-pts" style={{ color: p.color }}>
-                    {p.totalPoints} pts · {p.gamesPlayed} games
-                  </div>
+                  <div className="tc-pts" style={{ color: p.color }}>{p.totalPoints} pts · {p.gamesPlayed} games</div>
                 </div>
               </div>
               <div className="team-tags">
-                {p.teams.map(t => (
-                  <span key={t} className="team-tag">{t}</span>
-                ))}
+                {p.teams.map(t => (<span key={t} className="team-tag">{t}</span>))}
               </div>
             </div>
           ))}

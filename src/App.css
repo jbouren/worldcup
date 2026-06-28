@@ -148,6 +148,94 @@
   min-width: 0;
 }
 
+/* ── Playback bar ── */
+.playback-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 4px 12px;
+}
+
+.play-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1.5px solid #2a2a50;
+  background: #16162a;
+  color: #ccc;
+  font-size: 0.85rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: border-color 0.15s, color 0.15s;
+}
+.play-btn:hover { border-color: #5555aa; color: #fff; }
+.play-btn.is-playing { border-color: #6666cc; color: #aab0ff; }
+
+.playback-scrubber {
+  flex: 1;
+  height: 4px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: #1e1e38;
+  border-radius: 4px;
+  outline: none;
+  cursor: pointer;
+}
+.playback-scrubber::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #6666cc;
+  cursor: pointer;
+}
+.playback-scrubber::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #6666cc;
+  border: none;
+  cursor: pointer;
+}
+
+.playback-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  min-width: 52px;
+  gap: 1px;
+}
+
+.playback-date {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #ddd;
+  white-space: nowrap;
+}
+
+.date-flip {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #aab0ff;
+  white-space: nowrap;
+  display: inline-block;
+  animation: date-flip-in 0.18s ease-out;
+}
+
+@keyframes date-flip-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.playback-count {
+  font-size: 0.65rem;
+  color: #555;
+  white-space: nowrap;
+}
+
 /* ── Floating tooltip ── */
 .floating-tooltip {
   position: absolute;
