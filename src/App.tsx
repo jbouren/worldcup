@@ -119,11 +119,9 @@ function TooltipCard({ tooltip }: { tooltip: TooltipState | null }) {
           </div>
         </div>
       ))}
-      {point.details.every(d => d.stage !== 'Group Finish') && (
-        <div className="tooltip-game-label">
-          Game {point.x} of {player.gamesPlayed}
-        </div>
-      )}
+      <div className="tooltip-game-label">
+        Game {point.x} of {player.gamesPlayed}
+      </div>
     </div>
   )
 }
