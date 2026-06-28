@@ -97,22 +97,33 @@ function TooltipCard({ tooltip }: { tooltip: TooltipState | null }) {
       {point.details.map((d, i) => (
         <div key={i} className="tooltip-match">
           <div className="tooltip-match-row">
-            <span className="tooltip-stage-badge">{d.stage}</span>
+            {d.stage === 'Group Finish' ? (
+              <span className="tooltip-stage-badge" style={{ background: '#2a3a1a', color: '#aadd77' }}>
+                {d.breakdown[0]?.startsWith('1st') ? '🥇' : d.breakdown[0]?.startsWith('2nd') ? '🥈' : '🥉'} Group Finish
+              </span>
+            ) : (
+              <span className="tooltip-stage-badge">{d.stage}</span>
+            )}
             <span className="tooltip-score-text">
-              <strong>{d.team}</strong> {d.score} {d.opp}
+              {d.stage === 'Group Finish'
+                ? <strong>{d.team}</strong>
+                : <><strong>{d.team}</strong> {d.score} {d.opp}</>
+              }
             </span>
           </div>
           <div className="tooltip-breakdown">
             {d.breakdown.map((b, j) => (
-              <span key={j} className="tooltip-badge">{b}</span>
+              <span key={j} className="tooltip-badge" style={d.stage === 'Group Finish' ? { background: '#2a3a1a', color: '#aadd77' } : undefined}>{b}</span>
             ))}
-            {d.pts === 0 && <span className="tooltip-badge zero">No pts</span>}
+            {d.pts === 0 && d.stage !== 'Group Finish' && <span className="tooltip-badge zero">No pts</span>}
           </div>
         </div>
       ))}
-      <div className="tooltip-game-label">
-        Game {point.x} of {player.gamesPlayed}
-      </div>
+      {point.details.every(d => d.stage !== 'Group Finish') && (
+        <div className="tooltip-game-label">
+          Game {point.x} of {player.gamesPlayed}
+        </div>
+      )}
     </div>
   )
 }
