@@ -54,9 +54,109 @@ interface Match {
   team2: string
 }
 
+interface KnockoutMatch {
+  num: number
+  date: string
+  stage: string
+  team1: string
+  team2: string
+  g1: number | null
+  g2: number | null
+  etpk: string | null
+}
+
+const STAGE_WIN_PTS: Record<string, number> = {
+  RO32: 6, RO16: 8, QF: 10, SF: 14, '3rd Place': 10, Final: 20
+}
+
+
+function getTeamOwners(team: string): Player[] {
+  if (!team) return []
+  return players.filter(p => p.teams.includes(team))
+}
+
 const players = data.players as Player[]
 const allMatches = data.matches as Match[]
+const knockoutMatches = (data as { knockoutMatches: KnockoutMatch[] }).knockoutMatches
 const MAX_MATCH = allMatches[allMatches.length - 1]?.num ?? 1
+
+// ── Bracket layout ────────────────────────────────────────────────────
+const BK_H = 640
+const BK_CW = 144
+const BK_GAP = 28
+const BK_W = 9 * BK_CW + 8 * BK_GAP  // 1520px
+
+const BK_Q_COLORS = ['#4ade80', '#60a5fa', '#f59e0b', '#fb923c']
+
+const TEAM_FLAG: Record<string, string> = {
+  'South Africa': '🇿🇦', 'Canada': '🇨🇦', 'Germany': '🇩🇪', 'Paraguay': '🇵🇾',
+  'Netherlands': '🇳🇱', 'Morocco': '🇲🇦', 'Brazil': '🇧🇷', 'Japan': '🇯🇵',
+  'France': '🇫🇷', 'Sweden': '🇸🇪', 'Ivory Coast': '🇨🇮', 'Norway': '🇳🇴',
+  'Mexico': '🇲🇽', 'Ecuador': '🇪🇨', 'England': '🏴󠁧󠁢󠁥󠁮󠁧󠁿', 'DR Congo': '🇨🇩',
+  'USA': '🇺🇸', 'Bosnia & Herzegovina': '🇧🇦', 'Belgium': '🇧🇪', 'Senegal': '🇸🇳',
+  'Portugal': '🇵🇹', 'Croatia': '🇭🇷', 'Spain': '🇪🇸', 'Austria': '🇦🇹',
+  'Switzerland': '🇨🇭', 'Algeria': '🇩🇿', 'Argentina': '🇦🇷', 'Cabo Verde': '🇨🇻',
+  'Colombia': '🇨🇴', 'Ghana': '🇬🇭', 'Australia': '🇦🇺', 'Egypt': '🇪🇬',
+}
+
+// Left: Q1 (top, green) + Q3 (bottom, amber) → SF101
+// Right: Q2 (top, blue) + Q4 (bottom, orange) → SF102
+// Pairs within each quadrant: (pos0,pos1)→R16, (pos2,pos3)→R16
+const BK_COLS: Array<Array<{ num: number; q: number }>> = [
+  // Col 0: R32 Left — Q1 top 4, Q3 bottom 4
+  [73,75,74,77,81,82,83,84].map((num, i) => ({ num, q: i < 4 ? 0 : 2 })),
+  // Col 1: R16 Left — [90=W73/75, 89=W74/77, 94=W81/82, 93=W83/84]
+  [90,89,94,93].map((num, i) => ({ num, q: i < 2 ? 0 : 2 })),
+  // Col 2: QF Left
+  [{ num: 97, q: 0 }, { num: 98, q: 2 }],
+  // Col 3: SF Left (Q1 vs Q3)
+  [{ num: 101, q: -1 }],
+  // Col 4: Final
+  [{ num: 104, q: -1 }],
+  // Col 5: SF Right (Q2 vs Q4)
+  [{ num: 102, q: -1 }],
+  // Col 6: QF Right
+  [{ num: 99, q: 1 }, { num: 100, q: 3 }],
+  // Col 7: R16 Right — [91=W76/78, 92=W79/80, 96=W85/87, 95=W86/88]
+  [91,92,96,95].map((num, i) => ({ num, q: i < 2 ? 1 : 3 })),
+  // Col 8: R32 Right — Q2 top 4, Q4 bottom 4
+  [76,78,79,80,85,87,86,88].map((num, i) => ({ num, q: i < 4 ? 1 : 3 })),
+]
+
+const BK_COL_X = BK_COLS.map((_, i) => i * (BK_CW + BK_GAP))
+
+function bkYCenters(n: number): number[] {
+  return Array.from({ length: n }, (_, i) => ((i + 0.5) / n) * BK_H)
+}
+
+const BK_CONNS: Array<{ oc: number; ic: number; op: [number, number]; ii: number }> = [
+  { oc: 0, ic: 1, op: [0, 1], ii: 0 }, { oc: 0, ic: 1, op: [2, 3], ii: 1 },
+  { oc: 0, ic: 1, op: [4, 5], ii: 2 }, { oc: 0, ic: 1, op: [6, 7], ii: 3 },
+  { oc: 1, ic: 2, op: [0, 1], ii: 0 }, { oc: 1, ic: 2, op: [2, 3], ii: 1 },
+  { oc: 2, ic: 3, op: [0, 1], ii: 0 },
+  { oc: 3, ic: 4, op: [0, 0], ii: 0 },
+  { oc: 5, ic: 4, op: [0, 0], ii: 0 },
+  { oc: 6, ic: 5, op: [0, 1], ii: 0 },
+  { oc: 7, ic: 6, op: [0, 1], ii: 0 }, { oc: 7, ic: 6, op: [2, 3], ii: 1 },
+  { oc: 8, ic: 7, op: [0, 1], ii: 0 }, { oc: 8, ic: 7, op: [2, 3], ii: 1 },
+  { oc: 8, ic: 7, op: [4, 5], ii: 2 }, { oc: 8, ic: 7, op: [6, 7], ii: 3 },
+]
+
+function buildConnPath(oc: number, ic: number, op: [number, number], ii: number): string {
+  const isRight = oc > ic
+  const oEdge = isRight ? BK_COL_X[oc] : BK_COL_X[oc] + BK_CW
+  const iEdge = isRight ? BK_COL_X[ic] + BK_CW : BK_COL_X[ic]
+  const midX = (oEdge + iEdge) / 2
+  const oYs = bkYCenters(BK_COLS[oc].length)
+  const iYs = bkYCenters(BK_COLS[ic].length)
+  const yT = iYs[ii]
+  if (op[0] === op[1]) return `M ${oEdge} ${yT} H ${iEdge}`
+  const y1 = oYs[op[0]], y2 = oYs[op[1]]
+  return [`M ${oEdge} ${y1} H ${midX}`, `M ${oEdge} ${y2} H ${midX}`, `M ${midX} ${y1} V ${y2}`, `M ${midX} ${yT} H ${iEdge}`].join(' ')
+}
+
+const BK_CONN_PATHS = BK_CONNS.map(({ oc, ic, op, ii }) => buildConnPath(oc, ic, op, ii))
+const BK_COL_LABELS = ['Round of 32','Round of 16','Quarters','Semis','Final','Semis','Quarters','Round of 16','Round of 32']
 
 function Avatar({ player, size = 48 }: { player: Player; size?: number }) {
   return (
@@ -181,7 +281,156 @@ function DateFlip({ date }: { date: string }) {
   return <span key={date} className="date-flip">{date}</span>
 }
 
+function KoMatchCard({ match }: { match: KnockoutMatch }) {
+  const owners1 = getTeamOwners(match.team1)
+  const owners2 = getTeamOwners(match.team2)
+  const played = match.g1 !== null && match.g2 !== null
+  const winPts = STAGE_WIN_PTS[match.stage] ?? 6
+  const hasStakes = owners1.length > 0 || owners2.length > 0
+
+  return (
+    <div className={`ko-card${hasStakes ? ' ko-stakes-card' : ' ko-muted-card'}`}>
+      <div className="ko-teams">
+        <div className="ko-team">
+          <span className="ko-team-name">{match.team1 || 'TBD'}</span>
+          <div className="ko-owners">
+            {owners1.map(p => <Avatar key={p.name} player={p} size={22} />)}
+          </div>
+        </div>
+        <div className="ko-mid">
+          {played
+            ? <span className="ko-score">{match.g1} – {match.g2}</span>
+            : <span className="ko-vs">vs</span>}
+          {match.etpk && <div className="ko-etpk-badge">ET/PK</div>}
+        </div>
+        <div className="ko-team ko-team-r">
+          <span className="ko-team-name">{match.team2 || 'TBD'}</span>
+          <div className="ko-owners ko-owners-r">
+            {owners2.map(p => <Avatar key={p.name} player={p} size={22} />)}
+          </div>
+        </div>
+      </div>
+      {hasStakes && !played && (
+        <div className="ko-footer">+{winPts} pts for win · +1/goal · +1 ET/PK loss</div>
+      )}
+      {hasStakes && played && match.etpk && (
+        <div className="ko-footer">ET/PK winner: {match.etpk}</div>
+      )}
+    </div>
+  )
+}
+
+function BracketCard({ matchNum, quadrantColor, expanded, onToggle }: {
+  matchNum: number
+  quadrantColor: string | null
+  expanded: boolean
+  onToggle: () => void
+}) {
+  const match = knockoutMatches.find(m => m.num === matchNum)
+  if (!match) return null
+  const t1 = match.team1 || '—'
+  const t2 = match.team2 || '—'
+  const o1 = getTeamOwners(match.team1)
+  const o2 = getTeamOwners(match.team2)
+  const played = match.g1 !== null && match.g2 !== null
+  const hasOwners = o1.length > 0 || o2.length > 0
+  let w1 = false, w2 = false
+  if (played) {
+    if (match.g1! > match.g2!) w1 = true
+    else if (match.g2! > match.g1!) w2 = true
+    else if (match.etpk) { w1 = match.etpk === match.team1; w2 = !w1 }
+  }
+  return (
+    <div
+      className={`bk-card${hasOwners ? ' bk-stakes' : ' bk-muted'}${expanded ? ' bk-open' : ''}`}
+      style={{ borderColor: quadrantColor ? quadrantColor + '50' : undefined }}
+      onClick={onToggle}
+    >
+      <div className={`bk-row${w1 ? ' bk-win' : played ? ' bk-loss' : ''}`}>
+        <span className="bk-name" title={t1}>{t1}</span>
+        {TEAM_FLAG[match.team1] && <span className="bk-flag">{TEAM_FLAG[match.team1]}</span>}
+        {o1.length > 0 && <div className="bk-icons">{o1.map(p => <Avatar key={p.name} player={p} size={expanded ? 22 : 15} />)}</div>}
+        {played && <span className={`bk-g${w1 ? ' bk-g-win' : ''}`}>{match.g1}</span>}
+      </div>
+      <div className="bk-sep">
+        {!played && <span className="bk-vs">vs</span>}
+        {played && match.etpk && <span className="bk-vs">PK</span>}
+      </div>
+      <div className={`bk-row${w2 ? ' bk-win' : played ? ' bk-loss' : ''}`}>
+        <span className="bk-name" title={t2}>{t2}</span>
+        {TEAM_FLAG[match.team2] && <span className="bk-flag">{TEAM_FLAG[match.team2]}</span>}
+        {o2.length > 0 && <div className="bk-icons">{o2.map(p => <Avatar key={p.name} player={p} size={expanded ? 22 : 15} />)}</div>}
+        {played && <span className={`bk-g${w2 ? ' bk-g-win' : ''}`}>{match.g2}</span>}
+      </div>
+      {expanded && hasOwners && (
+        <div className="bk-players">
+          {[...o1.map(p => ({ p, team: t1 })), ...o2.map(p => ({ p, team: t2 }))].map(({ p, team }) => (
+            <div key={p.name} className="bk-player">
+              <Avatar player={p} size={28} />
+              <div className="bk-player-info">
+                <span className="bk-player-name" style={{ color: p.color }}>{p.name}</span>
+                <span className="bk-player-team">{team}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function BracketPage() {
+  const [expanded, setExpanded] = useState<number | null>(null)
+  const toggle = (num: number) => setExpanded(prev => prev === num ? null : num)
+  const thirdMatch = knockoutMatches.find(m => m.num === 103)
+
+  return (
+    <div className="bk-page">
+      <div className="bk-scroll">
+        <div className="bk-inner" style={{ width: BK_W + 32 }}>
+          <div className="bk-labels" style={{ width: BK_W }}>
+            {BK_COL_LABELS.map((label, i) => (
+              <div key={i} className="bk-label" style={{ left: BK_COL_X[i], width: BK_CW }}>{label}</div>
+            ))}
+          </div>
+          <div className="bk-canvas" style={{ height: BK_H, width: BK_W }}>
+            <svg className="bk-svg" width={BK_W} height={BK_H} style={{ overflow: 'visible' }}>
+              {BK_CONN_PATHS.map((d, i) => (
+                <path key={i} d={d} stroke="#3c3c60" strokeWidth={1.5} fill="none" />
+              ))}
+            </svg>
+            {BK_COLS.map((col, ci) => {
+              const yCs = bkYCenters(col.length)
+              return col.map(({ num, q }, mi) => (
+                <div
+                  key={num}
+                  className={`bk-slot${expanded === num ? ' bk-slot-open' : ''}`}
+                  style={{ left: BK_COL_X[ci], top: yCs[mi], width: BK_CW }}
+                >
+                  <BracketCard
+                    matchNum={num}
+                    quadrantColor={q >= 0 ? BK_Q_COLORS[q] : null}
+                    expanded={expanded === num}
+                    onToggle={() => toggle(num)}
+                  />
+                </div>
+              ))
+            })}
+          </div>
+          {thirdMatch && (
+            <div className="bk-third">
+              <div className="bk-third-label">3rd Place · July 18, Miami</div>
+              <KoMatchCard match={thirdMatch} />
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function App() {
+  const [page, setPage] = useState<'chart' | 'bracket'>('chart')
   const [hidden, setHidden] = useState<Set<string>>(new Set())
   const [tooltip, setTooltip] = useState<TooltipState | null>(null)
   const [hoveredPlayer, setHoveredPlayer] = useState<string | null>(null)
@@ -277,7 +526,14 @@ export default function App() {
         </div>
       </header>
 
-      <div className="main-content">
+      <nav className="page-tabs">
+        <button className={`page-tab${page === 'chart' ? ' page-tab-active' : ''}`} onClick={() => setPage('chart')}>📈 Standings</button>
+        <button className={`page-tab${page === 'bracket' ? ' page-tab-active' : ''}`} onClick={() => setPage('bracket')}>🏆 Bracket</button>
+      </nav>
+
+      {page === 'bracket' && <BracketPage />}
+
+      <div className="main-content" style={page === 'bracket' ? { display: 'none' } : undefined}>
         <div className="legend-panel">
           <div className="legend-title">Players</div>
           {players.map(p => {
@@ -384,7 +640,7 @@ export default function App() {
         </div>
       </div>
 
-      {!scrolled && (
+      {!scrolled && page === 'chart' && (
         <button
           className="scroll-hint"
           onClick={() => document.querySelector('.teams-section')?.scrollIntoView({ behavior: 'smooth' })}
@@ -395,7 +651,7 @@ export default function App() {
         </button>
       )}
 
-      <div className="teams-section">
+      <div className="teams-section" style={page === 'bracket' ? { display: 'none' } : undefined}>
         <h2 className="teams-title">Rosters</h2>
         <div className="teams-grid">
           {sorted.map(p => (

@@ -37,7 +37,7 @@
 .subtitle {
   margin: 2px 0 0;
   font-size: 0.78rem;
-  color: #666;
+  color: #9090b8;
 }
 
 /* ── Standings row ── */
@@ -86,7 +86,7 @@
   font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 1px;
-  color: #555;
+  color: #9090b8;
   padding: 0 6px 6px;
 }
 
@@ -131,14 +131,14 @@
 
 .leg-sub {
   font-size: 0.7rem;
-  color: #666;
+  color: #9090b8;
 }
 
 .leg-x {
   position: absolute;
   right: 8px;
   font-size: 0.75rem;
-  color: #555;
+  color: #9090b8;
 }
 
 /* ── Chart ── */
@@ -232,7 +232,7 @@
 
 .playback-count {
   font-size: 0.65rem;
-  color: #555;
+  color: #9090b8;
   white-space: nowrap;
 }
 
@@ -325,13 +325,13 @@
 }
 
 .tooltip-badge.zero {
-  color: #555;
-  background: #1a1a28;
+  color: #8888b0;
+  background: #1e1e30;
 }
 
 .tooltip-game-label {
   font-size: 0.68rem;
-  color: #444;
+  color: #7878a8;
   margin-top: 8px;
   text-align: right;
 }
@@ -388,7 +388,7 @@
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 1.5px;
-  color: #555;
+  color: #9090b8;
   margin: 0 0 14px;
   font-weight: 600;
 }
@@ -562,4 +562,239 @@
   .teams-grid {
     grid-template-columns: 1fr 1fr;
   }
+}
+
+/* ── Page tab nav ── */
+.page-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 12px 32px 0;
+  border-bottom: 1px solid #1e1e38;
+  background: #0f0f1a;
+}
+
+.page-tab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: #9090b8;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 8px 16px 10px;
+  transition: color 0.15s, border-color 0.15s;
+  letter-spacing: 0.01em;
+}
+
+.page-tab:hover { color: #ccc; }
+
+.page-tab-active {
+  color: #fff;
+  border-bottom-color: #fff;
+}
+
+/* ── Knockout match card (3rd place) ── */
+.ko-card {
+  background: #13132a;
+  border: 1px solid #1e1e38;
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+.ko-stakes-card { border-color: #2a2a48; }
+.ko-muted-card { opacity: 0.45; }
+.ko-teams { display: flex; align-items: flex-start; gap: 8px; }
+.ko-team { flex: 1; min-width: 0; }
+.ko-team-r { text-align: right; }
+.ko-team-name {
+  font-weight: 700; font-size: 0.88rem; color: #ddd;
+  display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ko-owners { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 6px; min-height: 22px; }
+.ko-owners-r { justify-content: flex-end; }
+.ko-mid { display: flex; flex-direction: column; align-items: center; padding: 0 6px 0; padding-top: 2px; flex-shrink: 0; }
+.ko-vs { font-size: 0.72rem; font-weight: 700; color: #7878a8; letter-spacing: 0.05em; }
+.ko-score { font-size: 1rem; font-weight: 700; color: #fff; white-space: nowrap; }
+.ko-etpk-badge { font-size: 0.6rem; font-weight: 700; color: #aaa; background: #222; border-radius: 4px; padding: 1px 4px; margin-top: 3px; }
+.ko-footer { font-size: 0.68rem; color: #8888b0; margin-top: 8px; text-align: center; border-top: 1px solid #2a2a44; padding-top: 6px; }
+
+/* ── True bracket ── */
+.bk-page { padding: 20px 0 64px; }
+
+.bk-scroll {
+  overflow-x: auto;
+  overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
+}
+
+.bk-inner {
+  padding: 0 16px;
+  position: relative;
+}
+
+.bk-labels {
+  position: relative;
+  height: 26px;
+  margin-bottom: 6px;
+}
+
+.bk-label {
+  position: absolute;
+  text-align: center;
+  font-size: 0.58rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #8888b8;
+  white-space: nowrap;
+}
+
+.bk-canvas {
+  position: relative;
+  overflow: visible;
+}
+
+.bk-svg {
+  position: absolute;
+  top: 0; left: 0;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.bk-slot {
+  position: absolute;
+  transform: translateY(-50%);
+  z-index: 1;
+}
+/* When expanded, anchor to where the compact card top was so the card only
+   grows downward — prevents the top team row from being clipped by the
+   scroll container's overflow boundary. ~34px ≈ half of compact card height. */
+.bk-slot-open {
+  z-index: 20;
+  transform: translateY(-34px);
+}
+
+/* Bracket match card */
+.bk-card {
+  background: #131326;
+  border: 1px solid #2a2a44;
+  border-radius: 7px;
+  padding: 6px 7px;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.12s, border-color 0.12s;
+  position: relative;
+}
+.bk-card:hover { background: #1a1a38; }
+.bk-muted { opacity: 0.55; }
+.bk-open {
+  box-shadow: 0 6px 28px rgba(0,0,0,0.6);
+  background: #16162e;
+}
+
+.bk-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  min-height: 20px;
+}
+.bk-win .bk-name { color: #fff; font-weight: 700; }
+.bk-loss .bk-name { color: #7878a8; }
+
+.bk-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.74rem;
+  color: #ccc;
+  padding-top: 1px;
+}
+
+.bk-icons { display: flex; gap: 2px; flex-shrink: 0; flex-wrap: wrap; max-width: 50px; justify-content: flex-end; }
+
+.bk-g {
+  font-weight: 700;
+  font-size: 0.8rem;
+  color: #8888b8;
+  min-width: 10px;
+  text-align: right;
+  flex-shrink: 0;
+}
+.bk-g-win { color: #fff; }
+
+.bk-sep {
+  height: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  border-top: 1px solid #2a2a44;
+  margin: 2px 0 0;
+}
+
+.bk-vs {
+  font-size: 0.58rem;
+  font-weight: 700;
+  color: #7878a8;
+  letter-spacing: 0.04em;
+}
+
+.bk-flag {
+  font-size: 0.82rem;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.bk-players {
+  margin-top: 8px;
+  padding-top: 7px;
+  border-top: 1px solid #2a2a44;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.bk-player {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.bk-player-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.bk-player-name {
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.bk-player-team {
+  font-size: 0.64rem;
+  color: #9090b8;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bk-third {
+  margin-top: 28px;
+  max-width: 380px;
+}
+
+.bk-third-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #9090b8;
+  margin-bottom: 8px;
+}
+
+@media (max-width: 768px) {
+  .page-tabs { padding: 10px 12px 0; }
+  .ko-team-name { font-size: 0.82rem; }
 }
